@@ -1,0 +1,6 @@
+{
+  "name": "ReduzirPDF - Comprimir PDF para Tamanho Exato",
+  "description": "Reduza o tamanho do seu PDF grátis para 100 KB, 200 KB, 500 KB, 1 MB ou personalizado diretamente no seu navegador, sem enviar arquivos para servidor.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
