@@ -1,8 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { UploadCloud, FileText, X, AlertCircle, Sparkles, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { UploadCloud, FileText, X, AlertCircle, Sparkles, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
 import { PDFInspectionResult } from '../types';
-import { inspectPdfFile } from '../lib/pdfInspector';
-import { generateSamplePdfFile } from '../lib/samplePdfGenerator';
 
 interface UploadCardProps {
   inspection: PDFInspectionResult | null;
@@ -22,6 +20,7 @@ export const UploadCard: React.FC<UploadCardProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [isGeneratingSample, setIsGeneratingSample] = useState(false);
 
   const handleProcessFile = async (file: File) => {
@@ -33,7 +32,9 @@ export const UploadCard: React.FC<UploadCardProps> = ({
       return;
     }
 
+    setIsProcessing(true);
     try {
+      const { inspectPdfFile } = await import('../lib/pdfInspector');
       const inspectRes = await inspectPdfFile(file);
       if (!inspectRes.isValidPdf || inspectRes.error) {
         setLocalError(inspectRes.error || 'Não foi possível ler este arquivo PDF.');
@@ -43,13 +44,15 @@ export const UploadCard: React.FC<UploadCardProps> = ({
       onFileSelected(file, inspectRes);
     } catch {
       setLocalError('Ocorreu um erro ao inspecionar o PDF. Tente outro arquivo.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    if (disabled || isLoadingFile) return;
+    if (disabled || isLoadingFile || isProcessing) return;
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleProcessFile(e.dataTransfer.files[0]);
@@ -58,7 +61,7 @@ export const UploadCard: React.FC<UploadCardProps> = ({
 
   const onDragOverHandler = (e: React.DragEvent) => {
     e.preventDefault();
-    if (!disabled && !isLoadingFile) {
+    if (!disabled && !isLoadingFile && !isProcessing) {
       setIsDragOver(true);
     }
   };
@@ -70,10 +73,12 @@ export const UploadCard: React.FC<UploadCardProps> = ({
 
   const handleSampleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (disabled || isLoadingFile || isGeneratingSample) return;
+    if (disabled || isLoadingFile || isGeneratingSample || isProcessing) return;
     setIsGeneratingSample(true);
     setLocalError(null);
     try {
+      const { generateSamplePdfFile } = await import('../lib/samplePdfGenerator');
+      const { inspectPdfFile } = await import('../lib/pdfInspector');
       const sampleFile = await generateSamplePdfFile();
       const inspectRes = await inspectPdfFile(sampleFile);
       onFileSelected(sampleFile, inspectRes);
@@ -118,14 +123,20 @@ export const UploadCard: React.FC<UploadCardProps> = ({
         >
           <div className="flex flex-col items-center justify-center pointer-events-none">
             <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-blue-100 transition-all">
-              <UploadCloud className="w-8 h-8" />
+              {isProcessing ? (
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              ) : (
+                <UploadCloud className="w-8 h-8" />
+              )}
             </div>
 
             <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-1">
-              Arraste seu PDF aqui ou clique para selecionar
+              {isProcessing ? 'Inspecionando documento...' : 'Arraste seu PDF aqui ou clique para selecionar'}
             </h3>
             <p className="text-sm text-slate-500 max-w-sm mb-4">
-              Selecione um arquivo PDF do seu dispositivo. Compatível com celular e computador.
+              {isProcessing
+                ? 'Lendo estrutura e metadados localmente no navegador...'
+                : 'Selecione um arquivo PDF do seu dispositivo. Compatível com celular e computador.'}
             </p>
 
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">

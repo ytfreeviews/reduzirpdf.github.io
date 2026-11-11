@@ -106,7 +106,14 @@ reduzirpdf/
 
 ## 5. Instruções para Deploy no GitHub Pages
 
-O projeto foi configurado com `base: './'` no `vite.config.ts` e inclui `public/404.html` para suporte nativo a Single Page Applications (SPA) no GitHub Pages.
+O projeto foi configurado com `base: './'` no `vite.config.ts` e inclui `public/404.html` para suporte nativo a Single Page Applications (SPA) no GitHub Pages, suportando tanto domínios personalizados na raiz quanto subdiretórios de repositório (`https://usuario.github.io/nome-do-repo/`).
+
+### Correções Implementadas para o Problema da Tela Branca (White Screen):
+1. **Polyfill de `Promise.withResolvers`**: O PDF.js v4+/v6+ utiliza intensamente esse método recente do ECMAScript. Em navegadores que ainda não o implementaram nativamente, um erro fatal causava a tela branca. Adicionamos o polyfill no topo do `src/main.tsx`.
+2. **Normalização de Subdiretório do Repositório**: Em `https://usuario.github.io/repo/`, o roteador extrai e preserva o nome do repositório automaticamente, evitando que links limpos e atualizações de página quebrem a aplicação.
+3. **Normalização de Barra Final (Trailing Slash)**: Script no `<head>` do `index.html` que garante o redirecionamento caso o usuário acerte o repositório sem a barra final, impedindo erros 404 em assets relativos `./assets/`.
+4. **Code Splitting (Importação Dinâmica)**: A biblioteca pesada do PDF.js (1,4 MB) foi desacoplada do carregamento inicial e é importada sob demanda somente quando o usuário seleciona ou comprime um documento, garantindo renderização inicial instantânea.
+5. **ErrorBoundary e Fallback Visual**: Se qualquer erro inesperado acontecer, o usuário recebe uma tela amigável em português com botão de recarregar em vez de uma tela vazia sem resposta.
 
 ### Método 1: Via GitHub Actions (Recomendado)
 1. No seu repositório no GitHub, acesse **Settings > Pages**.

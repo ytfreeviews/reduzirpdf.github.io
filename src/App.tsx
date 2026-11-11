@@ -16,31 +16,82 @@ import { ContactPage } from './components/ContactPage';
 import { AdSensePlaceholder } from './components/AdSensePlaceholder';
 
 import { PDFInspectionResult, TargetSizePresetId, CompressionProgress, CompressionResult, TARGET_PRESETS } from './types';
-import { compressPdf } from './lib/pdfCompressor';
 import { PAGES_CONFIG } from './lib/routesConfig';
 import { formatBytes } from './lib/fileUtils';
 import { ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
 
+const KNOWN_ROUTES = [
+  '/',
+  '/comprimir-pdf-para-100kb',
+  '/comprimir-pdf-para-200kb',
+  '/comprimir-pdf-para-500kb',
+  '/comprimir-pdf-para-1mb-gratis',
+  '/compactar-pdf-para-enviar',
+  '/diminuir-tamanho-de-pdf',
+  '/privacidade',
+  '/termos',
+  '/contato'
+];
+
+function getRepoBase(): string {
+  if (typeof window === 'undefined') return '';
+  const path = window.location.pathname;
+  const segments = path.split('/').filter(Boolean);
+  // Se o primeiro segmento existir e não for uma rota conhecida, é o nome do repositório no GitHub Pages
+  if (segments.length > 0 && !KNOWN_ROUTES.includes('/' + segments[0])) {
+    return '/' + segments[0];
+  }
+  return '';
+}
+
+function normalizeRoute(rawPath: string): string {
+  if (!rawPath || rawPath === '') return '/';
+  let path = rawPath;
+  if (path.startsWith('#')) {
+    path = path.slice(1);
+  }
+  const repoBase = getRepoBase();
+  if (repoBase && path.startsWith(repoBase)) {
+    path = path.slice(repoBase.length);
+  }
+  if (!path.startsWith('/')) {
+    path = '/' + path;
+  }
+  if (path.length > 1 && path.endsWith('/')) {
+    path = path.slice(0, -1);
+  }
+  return path || '/';
+}
+
 export default function App() {
-  // Roteamento SPA nativo e compatível com GitHub Pages
+  // Roteamento SPA nativo e compatível com GitHub Pages e domínios raiz
   const [currentPath, setCurrentPath] = useState<string>(() => {
     if (typeof window === 'undefined') return '/';
     // Verificar se veio de redirecionamento 404 do GitHub Pages (?p=...)
     const params = new URLSearchParams(window.location.search);
     const redirectPath = params.get('p');
     if (redirectPath) {
-      window.history.replaceState(null, '', redirectPath);
-      return redirectPath;
+      const norm = normalizeRoute(redirectPath);
+      const repoBase = getRepoBase();
+      try {
+        window.history.replaceState(null, '', repoBase + (norm === '/' ? '/' : norm));
+      } catch {
+        // Fallback se pushState for restrito
+      }
+      return norm;
     }
-    return window.location.pathname || '/';
+    if (window.location.hash && window.location.hash.startsWith('#/')) {
+      return normalizeRoute(window.location.hash.slice(1));
+    }
+    return normalizeRoute(window.location.pathname);
   });
 
   // Estado do Arquivo e Inspeção
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [inspection, setInspection] = useState<PDFInspectionResult | null>(null);
-  const [isLoadingFile, setIsLoadingFile] = useState<boolean>(false);
+  const [isLoadingFile] = useState<boolean>(false);
 
-  // Obter configuração da página atual
+  // Obter configuração da página atual garantindo fallback para '/'
   const pageConfig = PAGES_CONFIG[currentPath] || PAGES_CONFIG['/'];
 
   // Estado do Tamanho Alvo
@@ -76,20 +127,36 @@ export default function App() {
     }
   }, [currentPath]);
 
-  // Listener para botões voltar/avançar do navegador (popstate)
+  // Listener para botões voltar/avançar do navegador (popstate e hashchange)
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname || '/');
+      if (window.location.hash && window.location.hash.startsWith('#/')) {
+        setCurrentPath(normalizeRoute(window.location.hash.slice(1)));
+      } else {
+        setCurrentPath(normalizeRoute(window.location.pathname));
+      }
     };
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
   }, []);
 
-  // Navegação sem reload
+  // Navegação sem reload preservando o prefixo do repositório no GitHub Pages
   const navigate = (path: string) => {
-    if (path !== currentPath) {
-      window.history.pushState(null, '', path);
-      setCurrentPath(path);
+    const normalized = normalizeRoute(path);
+    const repoBase = getRepoBase();
+    const fullTargetUrl = repoBase + (normalized === '/' ? '/' : normalized);
+
+    if (normalized !== currentPath) {
+      try {
+        window.history.pushState(null, '', fullTargetUrl);
+      } catch {
+        window.location.hash = normalized;
+      }
+      setCurrentPath(normalized);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -124,7 +191,7 @@ export default function App() {
     setIsCompressing(false);
   };
 
-  // Iniciar compressão real
+  // Iniciar compressão real (carregando o motor de compressão sob demanda)
   const handleStartCompression = async () => {
     if (!selectedFile || !inspection) return;
 
@@ -137,6 +204,9 @@ export default function App() {
     abortControllerRef.current = controller;
 
     try {
+      // Importação dinâmica para não pesar o bundle inicial da página
+      const { compressPdf } = await import('./lib/pdfCompressor');
+
       const result = await compressPdf({
         file: selectedFile,
         targetBytes,

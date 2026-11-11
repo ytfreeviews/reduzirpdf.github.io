@@ -13,6 +13,12 @@
     <meta name="twitter:title" content="ReduzirPDF – Comprimir PDF para Tamanho Exato Online Grátis" />
     <meta name="twitter:description" content="Comprima seu PDF para 100 KB, 200 KB, 500 KB, 1 MB ou personalizado diretamente no navegador." />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563EB'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1 9h-2v3H9l3 3 3-3h-2v-3zm-1-7.5L18.5 8H14V3.5z'/></svg>" />
+    <script>
+      // Garante que caminhos no GitHub Pages sem barra final recebam a barra para resolver assets relativos ./assets/ corretamente
+      if (typeof window !== 'undefined' && location.pathname.indexOf('.') === -1 && !location.pathname.endsWith('/')) {
+        location.replace(location.pathname + '/' + location.search + location.hash);
+      }
+    </script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -31,7 +37,21 @@
     </script>
   </head>
   <body class="bg-white text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900 min-h-screen">
-    <div id="root"></div>
+    <div id="root">
+      <!-- Fallback de carregamento inicial para evitar tela branca enquanto os scripts são lidos -->
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #ffffff; color: #1e293b; text-align: center; padding: 20px;">
+        <div style="width: 56px; height: 56px; border-radius: 16px; background-color: #2563eb; color: #ffffff; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <svg style="width: 32px; height: 32px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <path d="M12 12v6"></path>
+            <path d="m9 15 3-3 3 3"></path>
+          </svg>
+        </div>
+        <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 8px 0; color: #0f172a;">Reduzir<span style="color: #2563eb;">PDF</span></h2>
+        <p style="font-size: 14px; color: #64748b; margin: 0;">Carregando ferramenta no seu navegador...</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
